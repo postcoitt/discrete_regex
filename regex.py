@@ -92,7 +92,6 @@ class RegexFSM:
         for char in regex_expr:
             new_state = self.__init_next_state(char, prev_state, tmp_next_state)
             if isinstance(new_state, (StarState, PlusState)):
-                # Star/Plus replace tmp_next_state in prev_state's chain
                 prev_state.next_states.append(new_state)
                 prev_state = new_state
             else:
@@ -125,10 +124,10 @@ class RegexFSM:
         for next_s in state.next_states:
             if isinstance(next_s, StarState):
                 if next_s.checking_state.check_self(char):
-                    return next_s           # входимо в зірочку (перший збіг)
+                    return next_s
                 result = self._check_next_with_epsilon(next_s, char)
                 if result is not None:
-                    return result           # epsilon-пропуск через StarState
+                    return result
             elif next_s.check_self(char):
                 return next_s
         return None
@@ -165,37 +164,48 @@ class RegexFSM:
 
 
 if __name__ == "__main__":
-    regex_abc = RegexFSM("abc")
-    print(regex_abc.check_string("abc") == True)
-    print(regex_abc.check_string("ab") == False)
-    print(regex_abc.check_string("abcd") == False)
+    tests = [
+        ("abc", "abc", True),
+        ("abc", "ab", False),
+        ("abc", "abcd", False),
 
-    regex_dot = RegexFSM("a.c")
-    print(regex_dot.check_string("abc") == True)
-    print(regex_dot.check_string("a4c") == True)
-    print(regex_dot.check_string("ac") == False)
+        ("a.c", "abc", True),
+        ("a.c", "a4c", True),
+        ("a.c", "ac", False),
 
-    regex_star = RegexFSM("ab*c")
-    print(regex_star.check_string("ac") == True)
-    print(regex_star.check_string("abc") == True)
-    print(regex_star.check_string("abbbc") == True)
-    print(regex_star.check_string("abx") == False)
+        ("ab*c", "ac", True),
+        ("ab*c", "abc", True),
+        ("ab*c", "abbbc", True),
+        ("ab*c", "abx", False),
 
-    regex_plus = RegexFSM("ab+c")
-    print(regex_plus.check_string("abc") == True)
-    print(regex_plus.check_string("abbbc") == True)
-    print(regex_plus.check_string("ac") == False)
-    print(regex_plus.check_string("ab") == False)
+        ("ab+c", "abc", True),
+        ("ab+c", "abbbc", True),
+        ("ab+c", "ac", False),
+        ("ab+c", "ab", False),
 
-    regex_dot_plus = RegexFSM("start.+end")
-    print(regex_dot_plus.check_string("start1end") == True)
-    print(regex_dot_plus.check_string("start---end") == True)
-    print(regex_dot_plus.check_string("startend") == False)
+        ("start.+end", "start1end", True),
+        ("start.+end", "start---end", True),
+        ("start.+end", "startend", False),
 
-    regex_complex = RegexFSM("a*4.+hi")
-    print(regex_complex.check_string("aaaaaa4uhi") == True)
-    print(regex_complex.check_string("4uhi") == True)
-    print(regex_complex.check_string("a4xyzhi") == True)
-    print(regex_complex.check_string("hi") == False)
-    print(regex_complex.check_string("4hi") == False)
-    print(regex_complex.check_string("a4hi") == False)
+        ("a*4.+hi", "aaaaaa4uhi", True),
+        ("a*4.+hi", "4uhi", True),
+        ("a*4.+hi", "a4xyzhi", True),
+        ("a*4.+hi", "hi", False),
+        ("a*4.+hi", "4hi", False),
+        ("a*4.+hi", "a4hi", False),
+    ]
+
+    all_passed = True
+
+    for pattern, text, expected in tests:
+        regex = RegexFSM(pattern)
+        actual = regex.check_string(text)
+
+        if actual != expected:
+            print(f" Failed test for pattern '{pattern}':")
+            print(f"   Argument of check_string: '{text}'")
+            print(f"   Expected: {expected}, got: {actual}\n")
+            all_passed = False
+
+    if all_passed:
+        print(" All tests passed!")
