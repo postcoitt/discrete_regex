@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 
 
 class State(ABC):
-
     @abstractmethod
     def __init__(self) -> None:
         pass
@@ -11,11 +10,11 @@ class State(ABC):
     @abstractmethod
     def check_self(self, char: str) -> bool:
         """
-        function checks whether occured character is handled by current ctate
+        function checks whether occured character is handled by current state
         """
         pass
 
-    def check_next(self, next_char: str) -> State | Exception:
+    def check_next(self, next_char: str) -> State:
         for state in self.next_states:
             if state.check_self(next_char):
                 return state
@@ -23,117 +22,152 @@ class State(ABC):
 
 
 class StartState(State):
-    next_states: list[State] = []
-
     def __init__(self):
         super().__init__()
+        self.next_states: list[State] = []
 
-    def check_self(self, char):
-        return super().check_self(char)
+    def check_self(self, char: str) -> bool:
+        return False
 
 
 class TerminationState(State):
-    pass  # Implement
+    def __init__(self) -> None:
+        super().__init__()
+        self.next_states: list[State] = []
+
+    def check_self(self, char: str) -> bool:
+        return False
 
 
 class DotState(State):
-    """
-    state for . character (any character accepted)
-    """
-
-    next_states: list[State] = []
-
+    """state for . character (any character accepted)"""
     def __init__(self):
         super().__init__()
+        self.next_states: list[State] = []
 
-    def check_self(self, char: str):
-        pass  # Implement
+    def check_self(self, char: str) -> bool:
+        return True
 
 
 class AsciiState(State):
-    """
-    state for alphabet letters or numbers
-    """
-
-    next_states: list[State] = []
-    curr_sym = ""
-
+    """state for alphabet letters or numbers"""
     def __init__(self, symbol: str) -> None:
-        pass  # Implement
+        super().__init__()
+        self.next_states: list[State] = []
+        self.curr_sym = symbol
 
-    def check_self(self, curr_char: str) -> State | Exception:
-        pass  # Implement
+    def check_self(self, curr_char: str) -> bool:
+        return curr_char == self.curr_sym
 
 
 class StarState(State):
-
-    next_states: list[State] = []
-
     def __init__(self, checking_state: State):
-        pass  # Implement
+        super().__init__()
+        self.next_states: list[State] = []
+        self.checking_state = checking_state
 
-    def check_self(self, char):
+    def check_self(self, char: str) -> bool:
         for state in self.next_states:
             if state.check_self(char):
                 return True
-
         return False
 
 
 class PlusState(State):
-    next_states: list[State] = []
-
     def __init__(self, checking_state: State):
-        pass  # Implement
+        super().__init__()
+        self.next_states: list[State] = []
+        self.checking_state = checking_state
 
-    def check_self(self, char):
-        pass  # Implement
+    def check_self(self, char: str) -> bool:
+        return self.checking_state.check_self(char)
 
 
 class RegexFSM:
-    curr_state: State = StartState()
-
     def __init__(self, regex_expr: str) -> None:
-
+        self.curr_state = StartState()
         prev_state = self.curr_state
         tmp_next_state = self.curr_state
 
         for char in regex_expr:
-            tmp_next_state = self.__init_next_state(char, prev_state, tmp_next_state)
-            prev_state.next_states.append(tmp_next_state)
+            new_state = self.__init_next_state(char, prev_state, tmp_next_state)
+            if isinstance(new_state, (StarState, PlusState)):
+                # Star/Plus replace tmp_next_state in prev_state's chain
+                prev_state.next_states.append(new_state)
+                prev_state = new_state
+            else:
+                tmp_next_state.next_states.append(new_state)
+                prev_state = tmp_next_state
+            tmp_next_state = new_state
+
+        tmp_next_state.next_states.append(TerminationState())
 
     def __init_next_state(
         self, next_token: str, prev_state: State, tmp_next_state: State
     ) -> State:
-        new_state = None
-
         match next_token:
             case next_token if next_token == ".":
-                new_state = DotState()
+                return DotState()
             case next_token if next_token == "*":
-                new_state = StarState(tmp_next_state)
-                # here you have to think, how to do it.
-
+                star = StarState(tmp_next_state)
+                prev_state.next_states.remove(tmp_next_state)
+                return star
             case next_token if next_token == "+":
-                pass  # Implement
-
+                plus = PlusState(tmp_next_state)
+                prev_state.next_states.remove(tmp_next_state)
+                return plus
             case next_token if next_token.isascii():
-                new_state = AsciiState(next_token)
-
+                return AsciiState(next_token)
             case _:
                 raise AttributeError("Character is not supported")
 
-        return new_state
+    def _check_next_with_epsilon(self, state: State, char: str) -> State | None:
+        for next_s in state.next_states:
+            if isinstance(next_s, StarState):
+                if next_s.checking_state.check_self(char):
+                    return next_s           # входимо в зірочку (перший збіг)
+                result = self._check_next_with_epsilon(next_s, char)
+                if result is not None:
+                    return result           # epsilon-пропуск через StarState
+            elif next_s.check_self(char):
+                return next_s
+        return None
 
-    def check_string(self):
-        pass  # Implement
+    def _can_terminate(self, state: State) -> bool:
+        if isinstance(state, TerminationState):
+            return True
+        for next_s in state.next_states:
+            if isinstance(next_s, TerminationState):
+                return True
+            if isinstance(next_s, StarState) and self._can_terminate(next_s):
+                return True
+        return False
+
+    def check_string(self, s: str) -> bool:
+        current_state = self.curr_state
+
+        for char in s:
+            if isinstance(current_state, (StarState, PlusState)):
+                next_s = self._check_next_with_epsilon(current_state, char)
+                if next_s is not None:
+                    current_state = next_s
+                elif current_state.checking_state.check_self(char):
+                    pass
+                else:
+                    return False
+            else:
+                next_s = self._check_next_with_epsilon(current_state, char)
+                if next_s is None:
+                    return False
+                current_state = next_s
+
+        return self._can_terminate(current_state)
 
 
 if __name__ == "__main__":
     regex_pattern = "a*4.+hi"
-
     regex_compiled = RegexFSM(regex_pattern)
-
     print(regex_compiled.check_string("aaaaaa4uhi"))  # True
-    print(regex_compiled.check_string("4uhi"))  # True
-    print(regex_compiled.check_string("meow"))  # False
+    print(regex_compiled.check_string("4uhi"))        # True
+    print(regex_compiled.check_string("meow"))        # False
+    print(regex_compiled.check_string("hi"))        # True
