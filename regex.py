@@ -165,9 +165,37 @@ class RegexFSM:
 
 
 if __name__ == "__main__":
-    regex_pattern = "a*4.+hi"
-    regex_compiled = RegexFSM(regex_pattern)
-    print(regex_compiled.check_string("aaaaaa4uhi"))  # True
-    print(regex_compiled.check_string("4uhi"))        # True
-    print(regex_compiled.check_string("meow"))        # False
-    print(regex_compiled.check_string("hi"))        # True
+    regex_abc = RegexFSM("abc")
+    print(regex_abc.check_string("abc") == True)
+    print(regex_abc.check_string("ab") == False)
+    print(regex_abc.check_string("abcd") == False)
+
+    regex_dot = RegexFSM("a.c")
+    print(regex_dot.check_string("abc") == True)
+    print(regex_dot.check_string("a4c") == True)
+    print(regex_dot.check_string("ac") == False)
+
+    regex_star = RegexFSM("ab*c")
+    print(regex_star.check_string("ac") == True)
+    print(regex_star.check_string("abc") == True)
+    print(regex_star.check_string("abbbc") == True)
+    print(regex_star.check_string("abx") == False)
+
+    regex_plus = RegexFSM("ab+c")
+    print(regex_plus.check_string("abc") == True)
+    print(regex_plus.check_string("abbbc") == True)
+    print(regex_plus.check_string("ac") == False)
+    print(regex_plus.check_string("ab") == False)
+
+    regex_dot_plus = RegexFSM("start.+end")
+    print(regex_dot_plus.check_string("start1end") == True)
+    print(regex_dot_plus.check_string("start---end") == True)
+    print(regex_dot_plus.check_string("startend") == False)
+
+    regex_complex = RegexFSM("a*4.+hi")
+    print(regex_complex.check_string("aaaaaa4uhi") == True)
+    print(regex_complex.check_string("4uhi") == True)
+    print(regex_complex.check_string("a4xyzhi") == True)
+    print(regex_complex.check_string("hi") == False)
+    print(regex_complex.check_string("4hi") == False)
+    print(regex_complex.check_string("a4hi") == False)
