@@ -66,7 +66,7 @@ all_passed = True
 for pattern, text, expected in tests:
     regex = RegexFSM(pattern)
     actual = regex.check_string(text)
-    
+
     if actual != expected:
         print(f" Failed test for pattern '{pattern}':")
         print(f"   Argument of check_string: '{text}'")
@@ -100,8 +100,9 @@ if all_passed:
 
 ### Скріншот результатів:
 
-*ДОДАТИ СЮДИ СКРІНШОТИ!*
+![Приклад успішного тесту](test_screenshots/success_test_example.jpg)
 
+![Приклад помилки в тесті](test_screenshots/fail_test_example.jpg)
 ## 4. Висновки
 
 В ході роботи було реалізовано механізм регулярних виразів через NFA (недетермінований скінченний автомат). Використання патерну **State** дозволило уникнути складних конструкцій `if-else` всередині основного циклу перевірки, переклавши відповідальність за логіку переходів на окремі об'єкти станів. Це робить код гнучким для розширення (наприклад, додавання оператора `?` або логічного АБО `|`).
